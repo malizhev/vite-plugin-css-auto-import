@@ -1,0 +1,23 @@
+{
+  "name": "vite-template-solid",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.8.2",
+    "vite": "^4.0.0",
+    "vite-plugin-inspect": "^0.7.11",
+    "vite-plugin-lazy-css-modules": "file:../..",
+    "vite-plugin-solid": "^2.3.0"
+  },
+  "dependencies": {
+    "clsx": "^1.2.1",
+    "solid-js": "^1.5.1"
+  }
+}
