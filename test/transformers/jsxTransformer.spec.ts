@@ -1,6 +1,5 @@
 import { expect, test } from "vitest";
 import { transformJSX } from "./../../src/transformers/jsxTransformer";
-import { sampleManifest } from "../fixtures/manifest";
 import { generateSampleModule } from "../fixtures/sampleModule";
 
 test("should inject style module", async () => {
@@ -9,7 +8,9 @@ test("should inject style module", async () => {
     moduleId: "component.ts",
     styleModuleId: "./style.css",
     originalCode,
-    manifest: sampleManifest,
+    manifest: {
+      simple: "__simple",
+    },
   });
   expect(code.startsWith(`import "./style.css"`)).toBe(true);
 });
