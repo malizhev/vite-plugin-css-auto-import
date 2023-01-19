@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-lazy-css-modules",
+  "name": "vite-plugin-auto-css-modules",
   "version": "0.1.0",
   "description": "",
   "type": "module",
@@ -25,14 +25,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/malizhev/vite-plugin-lazy-css-modules.git"
+    "url": "git+https://github.com/malizhev/vite-plugin-auto-css-modules.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/malizhev/vite-plugin-lazy-css-modules/issues"
+    "url": "https://github.com/malizhev/vite-plugin-auto-css-modules/issues"
   },
-  "homepage": "https://github.com/malizhev/vite-plugin-lazy-css-modules#readme",
+  "homepage": "https://github.com/malizhev/vite-plugin-auto-css-modules#readme",
   "devDependencies": {
     "@babel/parser": "^7.20.5",
     "@babel/plugin-syntax-typescript": "^7.20.0",

@@ -12,7 +12,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "paths": {
-      "vite-plugin-lazy-css-modules": ["./../../src/index.ts"]
+      "vite-plugin-auto-css-modules": ["./../../src/index.ts"]
     }
   }
 }

@@ -1,6 +1,6 @@
 import { parse as parsePath } from "path";
 import { readFile } from "fs/promises";
-import type { Plugin } from "vite";
+import type { Plugin, CSSModulesOptions, ViteDevServer } from "vite";
 import fg from "fast-glob";
 import { transformCSS } from "./transformers/cssTransformer";
 import { transformJSX } from "./transformers/jsxTransformer";
@@ -56,11 +56,15 @@ const defaultOptions: Partial<PluginOptions> = {
 const virtualModuleIdPrefix = "virtual:auto-css-modules";
 const resolvedVirtualModuleIdPrefix = `\0${virtualModuleIdPrefix}`;
 
-export default function lazyCssModules(
+export default function autoCssModules(
   options: Partial<PluginOptions> = defaultOptions
 ) {
   const modulesMap = new Map<string, string>();
   const cssModulesMap = new Map<string, string>();
+  const cssToComponentsMap = new Map<string, Set<string>>();
+
+  let server: ViteDevServer | undefined;
+  let modulesOptions: CSSModulesOptions | undefined;
 
   async function shouldTransformModule(id: string) {
     if (typeof options.shouldTransformModule === "function") {
@@ -129,14 +133,38 @@ export default function lazyCssModules(
 
   return {
     enforce: "pre",
-    name: "lazy-css-modules",
+    name: "auto-css-modules",
+
+    configResolved(config) {
+      if (config.css?.modules && typeof config.css.modules === "object") {
+        modulesOptions = config.css.modules;
+      }
+    },
+
+    configureServer(devServer) {
+      server = devServer;
+      server.watcher.on("change", (fileId) => {
+        if (!cssToComponentsMap.has(fileId)) {
+          return;
+        }
+
+        const dependentModules = cssToComponentsMap.get(fileId);
+        dependentModules?.forEach((id) => {
+          const module = server?.moduleGraph.getModuleById(id);
+          if (module) {
+            server?.reloadModule(module);
+          }
+        });
+      });
+    },
+
     resolveId(id) {
       if (!id.startsWith(virtualModuleIdPrefix)) {
         return undefined;
       }
       return "\0" + id;
     },
-    load(id, options) {
+    load(id) {
       if (!id.startsWith(resolvedVirtualModuleIdPrefix)) {
         return undefined;
       }
@@ -171,7 +199,10 @@ export default function lazyCssModules(
 
       const [styleModuleId] = styleModuleIds;
       const styleModuleCode = (await readFile(styleModuleId)).toString();
-      const { css, manifest } = await transformCSS(styleModuleCode);
+      const { css, manifest } = await transformCSS(
+        styleModuleCode,
+        modulesOptions
+      );
 
       const normalizedStyleModuleId = styleModuleId.replace(".module", "");
       const styleVirtualModuleId = generateVirtualStyleModuleId(
@@ -180,6 +211,14 @@ export default function lazyCssModules(
 
       modulesMap.set(id, css);
       cssModulesMap.set(normalizedStyleModuleId, css);
+
+      let dependentModules = cssToComponentsMap.get(styleModuleId);
+      if (!dependentModules) {
+        dependentModules = new Set();
+        cssToComponentsMap.set(styleModuleId, dependentModules);
+      }
+
+      dependentModules.add(id);
 
       return transformJSX({
         moduleId: id,

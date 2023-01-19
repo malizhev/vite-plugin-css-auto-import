@@ -1,1 +1,1 @@
-# vite-plugin-lazy-css-modules
+# vite-plugin-auto-css-modules
