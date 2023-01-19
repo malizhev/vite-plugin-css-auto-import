@@ -8,7 +8,7 @@ const App: Component = () => {
     <div class="App">
       <header class="header">
         <img src={logo} class={clsx({ logo: true })} alt="logo" />
-        <p>
+        <p class="paragraph">
           Edit <code>src/App.tsx</code> and save to reload.
         </p>
         <a

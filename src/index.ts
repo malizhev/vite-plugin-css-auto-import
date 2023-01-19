@@ -5,52 +5,62 @@ import fg from "fast-glob";
 import { transformCSS } from "./transformers/cssTransformer";
 import { transformJSX } from "./transformers/jsxTransformer";
 
-// interface BasePluginOptions {}
-
-// interface PluginJsxOptionsImplicit extends BasePluginOptions {
-//   jsxExtensions: string[];
-//   resolveJsx(fileName: string): never;
-// }
-
-// interface PluginJsxOptionsExplicit extends BasePluginOptions {
-//   jsxExtensions: never;
-//   resolveJsx(fileName: string): boolean;
-// }
-
-// interface PluginStyleOptionsImplicit extends BasePluginOptions {
-//   styleExtensions: string[];
-//   resolveStyle(fileName: string): never;
-// }
-
-// interface PluginStyleOptionsExplicit extends BasePluginOptions {
-//   styleExtensions: never;
-//   resolveStyle(fileName: string): boolean;
-// }
-
-// export type PluginOptions =
-//   | PluginStyleOptionsImplicit
-//   | PluginStyleOptionsExplicit
-//   | PluginJsxOptionsImplicit
-//   | PluginJsxOptionsExplicit;
+export interface ResolvedStyleResult {
+  isModule: boolean;
+  filePath: string;
+}
 
 export interface PluginOptions {
-  transformExtensions: string[];
+  /**
+   * Force all matched style files to be treated as CSS modules.
+   * `false` by default.
+   */
+  alwaysResolveModules: boolean;
+  /**
+   * Should style file name match component file name.
+   * For example: `Card.jsx` matches `Card.css` and `Card.module.css`.
+   * `true` by default
+   */
+  matchComponentName: boolean;
+  /**
+   * List of component modules extensions.
+   * `[".tsx", ".jsx"]` by default
+   */
+  componentExtensions: string[];
+  /**
+   * List of style files extensions.
+   * `[".css", ".scss", ".less"]` by default
+   */
   styleExtensions: string[];
-  styleModuleFileName: string;
-  matchModuleName: boolean;
-  allowModuleSuffix: boolean;
-  shouldTransformModule(fileName: string): boolean | Promise<boolean>;
-  resolveStyleModule(
+  /**
+   * Advanced method for matching the transformed components.
+   * Accepts component file name and full path.
+   *
+   * This method takes precedence over `componentExtensions`.
+   * `undefined` by default
+   */
+  shouldTransformComponent(
+    fileName: string,
+    filePath: string
+  ): boolean | Promise<boolean>;
+  /**
+   * Advanced method for resolving styles for the component.
+   * Accepts component file name (without extension), directory name and full path.
+   *
+   * This method takes precedence over `styleExtensions`, `alwaysResolveModules` and `matchComponentName`.
+   * `undefined` by default
+   */
+  resolveStyleForComponent(
     fileName: string,
     directoryName: string,
     filePath: string
-  ): string | Promise<string>;
+  ): ResolvedStyleResult | Promise<ResolvedStyleResult>;
 }
 
 const defaultOptions: Partial<PluginOptions> = {
-  transformExtensions: [".tsx", ".jsx"],
+  componentExtensions: [".tsx", ".jsx"],
   styleExtensions: [".css", ".scss", ".less"],
-  matchModuleName: true,
+  matchComponentName: true,
 };
 
 const virtualModuleIdPrefix = "virtual:auto-css-modules";
@@ -59,26 +69,31 @@ const resolvedVirtualModuleIdPrefix = `\0${virtualModuleIdPrefix}`;
 export default function autoCssModules(
   options: Partial<PluginOptions> = defaultOptions
 ) {
-  const modulesMap = new Map<string, string>();
-  const cssModulesMap = new Map<string, string>();
-  const cssToComponentsMap = new Map<string, Set<string>>();
+  const componentToCssMap = new Map<string, string>();
+  const styleModuleIdToCssMap = new Map<string, string>();
 
-  let server: ViteDevServer | undefined;
+  /**
+   * Used in development mode for watching
+   */
+  const directoryComponentsMap = new Map<string, Set<string>>();
+  const styleModuleIdToComponentIdsMap = new Map<string, Set<string>>();
+
   let modulesOptions: CSSModulesOptions | undefined;
 
   async function shouldTransformModule(id: string) {
-    if (typeof options.shouldTransformModule === "function") {
-      return await options.shouldTransformModule(id);
+    const path = parsePath(id);
+    const fileName = path.base;
+    if (typeof options.shouldTransformComponent === "function") {
+      return await options.shouldTransformComponent(fileName, id);
     }
 
-    if (!options.transformExtensions) {
+    if (!options.componentExtensions) {
       throw new Error(
-        "Either 'shouldTransformModule' or 'transformExtensions' is required"
+        "Either 'shouldTransformComponent' or 'componentExtensions' is required"
       );
     }
 
-    const path = parsePath(id);
-    return options.transformExtensions.includes(path.ext);
+    return options.componentExtensions.includes(path.ext);
   }
 
   function generateVirtualStyleModuleId(moduleId: string) {
@@ -86,49 +101,69 @@ export default function autoCssModules(
     return `${virtualModuleIdPrefix}/${uniqueId}${moduleId}`;
   }
 
-  async function getStyleModuleIds(jsxModuleId: string) {
+  function addMultipleModuleReference(
+    map: Map<string, Set<string>>,
+    key: string,
+    moduleId: string
+  ) {
+    let dependentModules = map.get(key);
+    if (!dependentModules) {
+      dependentModules = new Set();
+      map.set(key, dependentModules);
+    }
+
+    dependentModules.add(moduleId);
+  }
+
+  async function getStyleModules(jsxModuleId: string) {
     const path = parsePath(jsxModuleId);
     const fileName = path.name;
     const directoryName = path.dir;
-    if (typeof options.resolveStyleModule === "function") {
-      return options.resolveStyleModule(fileName, directoryName, jsxModuleId);
-    }
 
-    if (options.styleModuleFileName) {
-      const result = await fg(options.styleModuleFileName, {
-        absolute: true,
-        cwd: directoryName,
-        deep: 0,
-      });
-      if (result.length === 0) {
-        return undefined;
-      }
+    if (typeof options.resolveStyleForComponent === "function") {
+      const result = await options.resolveStyleForComponent(
+        fileName,
+        directoryName,
+        jsxModuleId
+      );
 
-      return result;
+      return result ? [result] : undefined;
     }
 
     if (!options.styleExtensions) {
       throw new Error(
-        "One of 'resolveStyleModule', 'styleModuleFileName' or 'styleExtensions' is required"
+        "One of 'resolveStyleForComponent' or 'styleExtensions' is required"
       );
     }
 
-    if (options.matchModuleName) {
-      const glob = `${fileName}*.{${options.styleExtensions
-        .map((ext) => ext.substring(1))
-        .join(",")}}`;
+    /**
+     * If `matchComponentName` is enabled then the result glob
+     * would look like this: `component*.{css|scss|less}`.
+     * Otherwise: `.{css|scss|less}` (matches any style file)
+     */
+    const globPrefix = options.matchComponentName ? fileName : "";
+    const glob = `${globPrefix}*.{${options.styleExtensions
+      .map((ext) => ext.substring(1))
+      .join(",")}}`;
 
-      const result = await fg(glob, {
-        absolute: true,
-        cwd: directoryName,
-        deep: 0,
-      });
-      if (result.length === 0) {
-        return undefined;
-      }
+    const result = await fg(glob, {
+      absolute: true,
+      cwd: directoryName,
+      deep: 0,
+    });
 
-      return result;
+    if (result.length === 0) {
+      return undefined;
     }
+
+    return result.map((filePath) => {
+      const styleModulePath = parsePath(filePath);
+      const isModule = styleModulePath.name.endsWith(".module");
+      return {
+        filePath,
+        isModule,
+      };
+    });
   }
 
   return {
@@ -141,20 +176,48 @@ export default function autoCssModules(
       }
     },
 
-    configureServer(devServer) {
-      server = devServer;
+    configureServer(server) {
+      const reloadModuleById = (id: string) => {
+        const module = server?.moduleGraph.getModuleById(id);
+        if (module) {
+          server?.reloadModule(module);
+        }
+      };
+
+      server.watcher.on("add", (fileId) => {
+        const path = parsePath(fileId);
+        const dir = path.dir;
+        const dependentModules = directoryComponentsMap.get(dir);
+        /**
+         * TODO: check if fileId is a style module
+         */
+        dependentModules?.forEach(reloadModuleById);
+      });
+
+      server.watcher.on("unlink", (fileId) => {
+        if (styleModuleIdToComponentIdsMap.has(fileId)) {
+          const dependentModules = styleModuleIdToComponentIdsMap.get(fileId);
+          dependentModules?.forEach(reloadModuleById);
+          styleModuleIdToComponentIdsMap.delete(fileId);
+        }
+      });
+
+      server.watcher.on("unlinkDir", (dir) => {
+        if (directoryComponentsMap.has(dir)) {
+          /**
+           * TODO: check whether need to clean other maps
+           */
+          directoryComponentsMap.delete(dir);
+        }
+      });
+
       server.watcher.on("change", (fileId) => {
-        if (!cssToComponentsMap.has(fileId)) {
+        if (!styleModuleIdToComponentIdsMap.has(fileId)) {
           return;
         }
 
-        const dependentModules = cssToComponentsMap.get(fileId);
-        dependentModules?.forEach((id) => {
-          const module = server?.moduleGraph.getModuleById(id);
-          if (module) {
-            server?.reloadModule(module);
-          }
-        });
+        const dependentModules = styleModuleIdToComponentIdsMap.get(fileId);
+        dependentModules?.forEach(reloadModuleById);
       });
     },
 
@@ -164,6 +227,7 @@ export default function autoCssModules(
       }
       return "\0" + id;
     },
+
     load(id) {
       if (!id.startsWith(resolvedVirtualModuleIdPrefix)) {
         return undefined;
@@ -174,51 +238,68 @@ export default function autoCssModules(
       pathSegments.shift();
       const referencedModuleId = "/" + pathSegments.join("/");
 
-      if (!cssModulesMap.has(referencedModuleId)) {
+      if (!styleModuleIdToCssMap.has(referencedModuleId)) {
         throw new Error(`Failed to resolve CSS module ${referencedModuleId}`);
       }
 
-      return cssModulesMap.get(referencedModuleId);
+      return styleModuleIdToCssMap.get(referencedModuleId);
     },
-    async transform(code, id, transformOptions) {
+
+    async transform(code, id) {
       if (!(await shouldTransformModule(id))) {
         return null;
       }
 
-      const styleModuleIds = await getStyleModuleIds(id);
-      if (!styleModuleIds) {
+      const styleModules = await getStyleModules(id);
+      if (!styleModules) {
         return null;
       }
 
       /**
-       * TODO: implement multiple style modules support
+       * TODO: consider multiple style modules support
        */
-      if (styleModuleIds.length > 1) {
-        throw new Error(`Found multiple style module matches for ${id}`);
+      if (styleModules.length > 1) {
+        this.warn(
+          `Found multiple style module matches for ${id}. Using the first match: ${styleModules[0].filePath}`
+        );
       }
 
-      const [styleModuleId] = styleModuleIds;
+      const [styleModule] = styleModules;
+      const { filePath: styleModuleId, isModule } = styleModule;
+
       const styleModuleCode = (await readFile(styleModuleId)).toString();
-      const { css, manifest } = await transformCSS(
-        styleModuleCode,
-        modulesOptions
-      );
+      let css: string;
+      let manifest: Record<string, string> = {};
+
+      if (isModule) {
+        const result = await transformCSS(styleModuleCode, modulesOptions);
+        css = result.css;
+        manifest = result.manifest;
+      } else {
+        css = styleModuleCode;
+      }
 
       const normalizedStyleModuleId = styleModuleId.replace(".module", "");
       const styleVirtualModuleId = generateVirtualStyleModuleId(
         normalizedStyleModuleId
       );
 
-      modulesMap.set(id, css);
-      cssModulesMap.set(normalizedStyleModuleId, css);
+      const parsedModuleId = parsePath(id);
+      const componentDirectory = parsedModuleId.dir;
 
-      let dependentModules = cssToComponentsMap.get(styleModuleId);
-      if (!dependentModules) {
-        dependentModules = new Set();
-        cssToComponentsMap.set(styleModuleId, dependentModules);
-      }
+      componentToCssMap.set(id, css);
+      styleModuleIdToCssMap.set(normalizedStyleModuleId, css);
 
-      dependentModules.add(id);
+      addMultipleModuleReference(
+        styleModuleIdToComponentIdsMap,
+        styleModuleId,
+        id
+      );
+      addMultipleModuleReference(
+        directoryComponentsMap,
+        componentDirectory,
+        id
+      );
 
       return transformJSX({
         moduleId: id,
