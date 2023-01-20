@@ -10,6 +10,7 @@ const external = [
   "@babel/preset-typescript",
   "@babel/parser",
   "@babel/traverse",
+  "@babel/types",
   "postcss",
   "postcss-modules"
 ];
