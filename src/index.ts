@@ -1,61 +1,10 @@
 import { parse as parsePath } from "path";
 import { readFile } from "fs/promises";
-import type { Plugin, CSSModulesOptions, ViteDevServer } from "vite";
-import fg from "fast-glob";
-import { transformCSS } from "./transformers/cssTransformer";
-import { transformJSX } from "./transformers/jsxTransformer";
-
-export interface ResolvedStyleResult {
-  isModule: boolean;
-  filePath: string;
-}
-
-export interface PluginOptions {
-  /**
-   * Force all matched style files to be treated as CSS modules.
-   * `false` by default.
-   */
-  alwaysResolveModules: boolean;
-  /**
-   * Should style file name match component file name.
-   * For example: `Card.jsx` matches `Card.css` and `Card.module.css`.
-   * `true` by default
-   */
-  matchComponentName: boolean;
-  /**
-   * List of component modules extensions.
-   * `[".tsx", ".jsx"]` by default
-   */
-  componentExtensions: string[];
-  /**
-   * List of style files extensions.
-   * `[".css", ".scss", ".less"]` by default
-   */
-  styleExtensions: string[];
-  /**
-   * Advanced method for matching the transformed components.
-   * Accepts component file name and full path.
-   *
-   * This method takes precedence over `componentExtensions`.
-   * `undefined` by default
-   */
-  shouldTransformComponent(
-    fileName: string,
-    filePath: string
-  ): boolean | Promise<boolean>;
-  /**
-   * Advanced method for resolving styles for the component.
-   * Accepts component file name (without extension), directory name and full path.
-   *
-   * This method takes precedence over `styleExtensions`, `alwaysResolveModules` and `matchComponentName`.
-   * `undefined` by default
-   */
-  resolveStyleForComponent(
-    fileName: string,
-    directoryName: string,
-    filePath: string
-  ): ResolvedStyleResult | Promise<ResolvedStyleResult>;
-}
+import type { Plugin, CSSModulesOptions } from "vite";
+import { transformStyles } from "./stylesTransformer";
+import { transformJSX } from "./jsxTransformer";
+import { PluginOptions } from "./types";
+import { getAllFilesInDirectory, resolveStylesFromDirectory } from "./helpers";
 
 const defaultOptions: Partial<PluginOptions> = {
   componentExtensions: [".tsx", ".jsx"],
@@ -67,8 +16,12 @@ const virtualModuleIdPrefix = "virtual:auto-css-modules";
 const resolvedVirtualModuleIdPrefix = `\0${virtualModuleIdPrefix}`;
 
 export default function autoCssModules(
-  options: Partial<PluginOptions> = defaultOptions
+  userOptions: Partial<PluginOptions> = {}
 ) {
+  const options = {
+    ...defaultOptions,
+    ...userOptions,
+  };
   const componentToCssMap = new Map<string, string>();
   const styleModuleIdToCssMap = new Map<string, string>();
 
@@ -101,7 +54,7 @@ export default function autoCssModules(
     return `${virtualModuleIdPrefix}/${uniqueId}${moduleId}`;
   }
 
-  function addMultipleModuleReference(
+  function addReferenceRecord(
     map: Map<string, Set<string>>,
     key: string,
     moduleId: string
@@ -113,57 +66,6 @@ export default function autoCssModules(
     }
 
     dependentModules.add(moduleId);
-  }
-
-  async function getStyleModules(jsxModuleId: string) {
-    const path = parsePath(jsxModuleId);
-    const fileName = path.name;
-    const directoryName = path.dir;
-
-    if (typeof options.resolveStyleForComponent === "function") {
-      const result = await options.resolveStyleForComponent(
-        fileName,
-        directoryName,
-        jsxModuleId
-      );
-
-      return result ? [result] : undefined;
-    }
-
-    if (!options.styleExtensions) {
-      throw new Error(
-        "One of 'resolveStyleForComponent' or 'styleExtensions' is required"
-      );
-    }
-
-    /**
-     * If `matchComponentName` is enabled then the result glob
-     * would look like this: `component*.{css|scss|less}`.
-     * Otherwise: `.{css|scss|less}` (matches any style file)
-     */
-    const globPrefix = options.matchComponentName ? fileName : "";
-    const glob = `${globPrefix}*.{${options.styleExtensions
-      .map((ext) => ext.substring(1))
-      .join(",")}}`;
-
-    const result = await fg(glob, {
-      absolute: true,
-      cwd: directoryName,
-      deep: 0,
-    });
-
-    if (result.length === 0) {
-      return undefined;
-    }
-
-    return result.map((filePath) => {
-      const styleModulePath = parsePath(filePath);
-      const isModule = styleModulePath.name.endsWith(".module");
-      return {
-        filePath,
-        isModule,
-      };
-    });
   }
 
   return {
@@ -250,8 +152,16 @@ export default function autoCssModules(
         return null;
       }
 
-      const styleModules = await getStyleModules(id);
-      if (!styleModules) {
+      const parsedModuleId = parsePath(id);
+      const componentDirectory = parsedModuleId.dir;
+      const directory = await getAllFilesInDirectory(componentDirectory);
+      const styleModules = await resolveStylesFromDirectory({
+        componentFilePath: id,
+        directory,
+        options,
+      });
+
+      if (!styleModules || !styleModules.length) {
         return null;
       }
 
@@ -272,10 +182,13 @@ export default function autoCssModules(
       let manifest: Record<string, string> = {};
 
       if (isModule) {
-        const result = await transformCSS(styleModuleCode, modulesOptions);
+        const result = await transformStyles(styleModuleCode, modulesOptions);
         css = result.css;
         manifest = result.manifest;
       } else {
+        /**
+         * No need to transform non-module styles. Just use original CSS as is.
+         */
         css = styleModuleCode;
       }
 
@@ -284,22 +197,11 @@ export default function autoCssModules(
         normalizedStyleModuleId
       );
 
-      const parsedModuleId = parsePath(id);
-      const componentDirectory = parsedModuleId.dir;
-
       componentToCssMap.set(id, css);
       styleModuleIdToCssMap.set(normalizedStyleModuleId, css);
 
-      addMultipleModuleReference(
-        styleModuleIdToComponentIdsMap,
-        styleModuleId,
-        id
-      );
-      addMultipleModuleReference(
-        directoryComponentsMap,
-        componentDirectory,
-        id
-      );
+      addReferenceRecord(styleModuleIdToComponentIdsMap, styleModuleId, id);
+      addReferenceRecord(directoryComponentsMap, componentDirectory, id);
 
       return transformJSX({
         moduleId: id,

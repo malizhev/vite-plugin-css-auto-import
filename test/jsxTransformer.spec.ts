@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { transformJSX } from "./../../src/transformers/jsxTransformer";
-import { generateSampleModule } from "../fixtures/sampleModule";
+import { transformJSX } from "../src/jsxTransformer";
+import { generateSampleModule } from "./fixtures/sampleModule";
 
 test("should inject style module", async () => {
   const originalCode = generateSampleModule(`<div class="simple" />`);

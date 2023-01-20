@@ -2,7 +2,7 @@ import type { CSSModulesOptions } from "vite";
 import postcss from "postcss";
 import postcssModules from "postcss-modules";
 
-export async function transformCSS(
+export async function transformStyles(
   code: string,
   options: CSSModulesOptions = {}
 ) {
