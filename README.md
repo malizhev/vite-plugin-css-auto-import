@@ -1,1 +1,1 @@
-# vite-plugin-auto-css-modules
+# vite-plugin-css-auto-import

@@ -12,7 +12,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "paths": {
-      "vite-plugin-auto-css-modules": ["./../../src/index.ts"]
+      "vite-plugin-css-auto-import": ["./../../src/index.ts"]
     }
   }
 }

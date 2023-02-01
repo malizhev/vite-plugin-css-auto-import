@@ -12,10 +12,10 @@ const defaultOptions: Partial<PluginOptions> = {
   matchComponentName: true,
 };
 
-const virtualModuleIdPrefix = "virtual:auto-css-modules";
+const virtualModuleIdPrefix = "virtual:css-auto-import";
 const resolvedVirtualModuleIdPrefix = `\0${virtualModuleIdPrefix}`;
 
-export default function autoCssModules(
+export default function cssAutoImport(
   userOptions: Partial<PluginOptions> = {}
 ) {
   const options = {
@@ -46,6 +46,9 @@ export default function autoCssModules(
       );
     }
 
+    /**
+     * TODO: add pragma to disable transform inside component file 
+     */
     return options.componentExtensions.includes(path.ext);
   }
 
@@ -70,7 +73,7 @@ export default function autoCssModules(
 
   return {
     enforce: "pre",
-    name: "auto-css-modules",
+    name: "css-auto-import",
 
     configResolved(config) {
       if (config.css?.modules && typeof config.css.modules === "object") {

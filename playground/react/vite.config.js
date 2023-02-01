@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import inspectPlugin from 'vite-plugin-inspect'
-import autoCSSModules from 'vite-plugin-auto-css-modules'
+import cssAutoImport from 'vite-plugin-css-auto-import'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [autoCSSModules(), react(), inspectPlugin()],
+  plugins: [cssAutoImport(), react(), inspectPlugin()],
 })

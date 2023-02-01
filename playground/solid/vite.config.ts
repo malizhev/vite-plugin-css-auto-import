@@ -1,10 +1,10 @@
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
 import inspectPlugin from "vite-plugin-inspect";
-import autoCSSModules from "vite-plugin-auto-css-modules";
+import cssAutoImport from "vite-plugin-css-auto-import";
 
 export default defineConfig({
-  plugins: [autoCSSModules(), solidPlugin(), inspectPlugin()],
+  plugins: [cssAutoImport(), solidPlugin(), inspectPlugin()],
   server: {
     port: 4040,
   },
