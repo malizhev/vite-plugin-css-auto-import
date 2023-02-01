@@ -11,8 +11,12 @@ const external = [
   "@babel/parser",
   "@babel/traverse",
   "@babel/types",
+  "vite",
   "postcss",
-  "postcss-modules"
+  "postcss-modules",
+  "magic-string",
+  "@nodelib/fs.scandir",
+  "micromatch",
 ];
 
 /**
