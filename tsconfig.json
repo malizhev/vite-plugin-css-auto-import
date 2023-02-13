@@ -13,8 +13,7 @@
     "jsx": "preserve",
     "types": ["vite/client"],
     "declaration": true,
-    "isolatedModules": true,
-    "importsNotUsedAsValues": "preserve"
+    "isolatedModules": true
   },
   "include": ["./src/**/*.ts"]
 }

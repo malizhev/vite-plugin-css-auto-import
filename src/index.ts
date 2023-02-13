@@ -47,7 +47,7 @@ export default function cssAutoImport(
     }
 
     /**
-     * TODO: add pragma to disable transform inside component file 
+     * TODO: add pragma to disable transform inside component file
      */
     return options.componentExtensions.includes(path.ext);
   }
@@ -181,18 +181,37 @@ export default function cssAutoImport(
       const { filePath: styleModuleId, isModule } = styleModule;
 
       const styleModuleCode = (await readFile(styleModuleId)).toString();
-      let css: string;
+      let css: string | undefined;
       let manifest: Record<string, string> = {};
 
       if (isModule) {
-        const result = await transformStyles(styleModuleCode, modulesOptions);
-        css = result.css;
-        manifest = result.manifest;
+        try {
+          const result = await transformStyles(
+            styleModuleId,
+            styleModuleCode,
+            modulesOptions
+          );
+          css = result.css;
+          manifest = result.manifest;
+        } catch (err: any) {
+          this.error({
+            message: err.reason,
+            loc: {
+              column: err.column,
+              line: err.line,
+              file: err.file,
+            },
+          });
+        }
       } else {
         /**
          * No need to transform non-module styles. Just use original CSS as is.
          */
         css = styleModuleCode;
+      }
+
+      if (css === undefined) {
+        return null;
       }
 
       const normalizedStyleModuleId = styleModuleId.replace(".module", "");

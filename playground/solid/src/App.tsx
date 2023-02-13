@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import clsx from "clsx";
 
 import logo from "./logo.svg";
+import { Label } from "./components/Label/Label";
 
 const App: Component = () => {
   return (
@@ -17,7 +18,7 @@ const App: Component = () => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn Solid
+          <Label>Learn Solid</Label>
         </a>
       </header>
     </div>

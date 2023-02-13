@@ -10,11 +10,12 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "less": "^4.1.3",
     "sass": "^1.57.1",
     "typescript": "^4.8.2",
     "vite": "^4.0.0",
-    "vite-plugin-inspect": "^0.7.11",
     "vite-plugin-css-auto-import": "file:../..",
+    "vite-plugin-inspect": "^0.7.11",
     "vite-plugin-solid": "^2.3.0"
   },
   "dependencies": {
