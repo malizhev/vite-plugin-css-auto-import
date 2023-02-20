@@ -8,7 +8,7 @@ test("should throw when no resolution options have been passed", async () => {
     options: {},
   };
   await expect(() => resolveStylesFromDirectory(options)).rejects.toThrow(
-    "One of 'resolveStyleForComponent' or 'styleExtensions' is required"
+    "One of 'resolveStyleForComponent', 'styleGlob' or 'styleExtensions' is required"
   );
 });
 
@@ -30,7 +30,9 @@ test("should match component name (default options)", async () => {
     directory: [
       "/a/b/c/Component.tsx",
       "/a/b/c/Component.scss",
+      "/a/b/c/Component.module.scss",
       "/a/b/c/Component.css",
+      "/a/b/c/Component.module.css",
     ],
     options: {
       matchComponentName: true,
@@ -42,7 +44,29 @@ test("should match component name (default options)", async () => {
   ]);
   expect(result2).toMatchObject([
     { filePath: "/a/b/c/Component.css", isModule: false },
+    { filePath: "/a/b/c/Component.module.css", isModule: true },
     { filePath: "/a/b/c/Component.scss", isModule: false },
+    { filePath: "/a/b/c/Component.module.scss", isModule: true },
+  ]);
+});
+
+test("should match file with a specific name using a glob", async () => {
+  const result = await resolveStylesFromDirectory({
+    componentFilePath: "/a/b/c/Component.tsx",
+    directory: [
+      "/a/b/c/Component.tsx",
+      "/a/b/c/file-a.css",
+      "/a/b/c/file-b.scss",
+      "/a/b/c/index.scss",
+      "/a/b/c/index.css",
+    ],
+    options: {
+      styleGlob: "index.?(s)css",
+    },
+  });
+  expect(result).toMatchObject([
+    { filePath: "/a/b/c/index.scss", isModule: false },
+    { filePath: "/a/b/c/index.css", isModule: false },
   ]);
 });
 
@@ -127,7 +151,7 @@ test("should always marks styles as modules", async () => {
     ],
     options: {
       matchComponentName: false,
-      alwaysResolveModules: true,
+      resolveAllStylesAsModules: true,
       styleExtensions: [".css", ".scss", ".less"],
     },
   });

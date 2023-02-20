@@ -8,7 +8,7 @@ export interface PluginOptions {
    * Force all matched style files to be treated as CSS modules.
    * `false` by default.
    */
-  alwaysResolveModules: boolean;
+  resolveAllStylesAsModules: boolean;
   /**
    * Should style file name match component file name.
    * For example: `Card.jsx` matches `Card.css` and `Card.module.css`.
@@ -20,6 +20,11 @@ export interface PluginOptions {
    * `[".tsx", ".jsx"]` by default
    */
   componentExtensions: string[];
+  /**
+   * Glob to match styles in the current directory.
+   * `undefined` by default
+   */
+  styleGlob: string;
   /**
    * List of style files extensions.
    * `[".css", ".scss", ".less"]` by default
@@ -40,7 +45,7 @@ export interface PluginOptions {
    * Advanced method for resolving styles for the component.
    * Accepts component file name (without extension), directory name and full path.
    *
-   * This method takes precedence over `styleExtensions`, `alwaysResolveModules` and `matchComponentName`.
+   * This method takes precedence over `styleGlob`, `styleExtensions`, `resolveAllStylesAsModules` and `matchComponentName`.
    * `undefined` by default
    */
   resolveStyleForComponent(

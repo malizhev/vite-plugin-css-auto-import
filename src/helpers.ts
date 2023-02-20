@@ -26,9 +26,17 @@ export async function resolveStylesFromDirectory({
     return result ? [result] : [];
   }
 
+  if (typeof options.styleGlob === "string") {
+    const matches = micromatch(directory, options.styleGlob, {
+      basename: true,
+    });
+
+    return handleGlobMatches(matches, options.resolveAllStylesAsModules);
+  }
+
   if (!options.styleExtensions) {
     throw new Error(
-      "One of 'resolveStyleForComponent' or 'styleExtensions' is required"
+      "One of 'resolveStyleForComponent', 'styleGlob' or 'styleExtensions' is required"
     );
   }
 
@@ -46,10 +54,17 @@ export async function resolveStylesFromDirectory({
     basename: true,
   });
 
+  return handleGlobMatches(matches, options.resolveAllStylesAsModules);
+}
+
+function handleGlobMatches(
+  matches: string[],
+  resolveAllStylesAsModules = false
+): ResolvedStyleResult[] {
   return matches.map((filePath) => {
     const parsedStylePath = parse(filePath);
     let isModule: boolean;
-    if (options.alwaysResolveModules) {
+    if (resolveAllStylesAsModules) {
       isModule = true;
     } else {
       isModule = parsedStylePath.name.endsWith(".module");
