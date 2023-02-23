@@ -34,6 +34,13 @@ export async function transformJSX({
 
   source.prepend(`import "${styleModuleId}";\n`);
 
+  /**
+   * No need to walk through JSX if manifest is empty.
+   */
+  if (Object.keys(manifest).length === 0) {
+    return generateRollupTransformResult(source, moduleId);
+  }
+
   traverse(ast, {
     JSXAttribute(path) {
       const { value } = path.node;
@@ -115,6 +122,10 @@ export async function transformJSX({
     });
   }
 
+  return generateRollupTransformResult(source, moduleId);
+}
+
+function generateRollupTransformResult(source: MagicString, moduleId: string) {
   return {
     code: source.toString(),
     map: source.generateMap({

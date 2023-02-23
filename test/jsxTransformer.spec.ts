@@ -8,9 +8,7 @@ test("should inject style module", async () => {
     moduleId: "component.ts",
     styleModuleId: "./style.css",
     originalCode,
-    manifest: {
-      simple: "__simple",
-    },
+    manifest: {},
   });
   expect(code.startsWith(`import "./style.css"`)).toBe(true);
 });
