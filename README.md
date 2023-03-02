@@ -41,7 +41,15 @@ import styles from "./styles.module.css";
 </details>
 <br>
 
-Writing components should be easy. Just put your CSS file next to a component and this plugin will do the rest.
+Writing components should be easy. Just put your CSS file next to a component and this plugin will do the rest:
+
+- automatically import styles to JSX/TSX components
+- transform scoped classnames for CSS Modules (e.g. `className="link"` becomes `className="_link_1nhoj_19"`) 
+
+<!-- ## Features
+
+- First-class CSS modules support.
+- Supports JSX and TSX components. -->
 
 ## How it works
 
@@ -73,8 +81,12 @@ You can configure CSS modules transform by setting [`css.modules`](https://vitej
 With this CSS file:
 
 ```css
-.link { ... }
-.secondary { ... }
+.link {
+  ...;
+}
+.secondary {
+  ...;
+}
 ```
 
 ```html
@@ -83,7 +95,8 @@ With this CSS file:
 <!-- after -->
 <a href="/" className="_link_1nhoj_19"></a>
 ```
-You can easily 
+
+You can easily
 
 ```html
 <!-- before -->
