@@ -1,10 +1,8 @@
 # ⚡ vite-plugin-css-auto-import [![NPM version](https://img.shields.io/npm/v/vite-plugin-css-auto-import?style=flat-square)](https://www.npmjs.com/package/vite-plugin-css-auto-import)
 
-<!-- # ⚡ vite-plugin-css-auto-import [![NPM version](https://badgen.net/npm/v/vite-plugin-css-auto-import)](https://www.npmjs.com/package/vite-plugin-css-auto-import) -->
-
 The plugin is designed specifically for folks who are tired of this:
 
-```
+```ts
 import styles from "./styles.module.css";
 ```
 
@@ -43,7 +41,7 @@ import styles from "./styles.module.css";
 
 Writing components should be easy. Just put your CSS file next to a component, and this plugin will do the rest:
 
-- automatically import styles to JSX/TSX components
+- automatically import styles into JSX/TSX components
 - transform scoped class names for CSS Modules (e.g. `className="link"` becomes `className="_link_1nhoj_19"`)
 
 ## Features
@@ -56,20 +54,15 @@ Writing components should be easy. Just put your CSS file next to a component, a
 
 Install `vite-plugin-css-auto-import` as dev dependency.
 
-```
-
+```sh
 # with npm
-
 npm install -D vite-plugin-css-auto-import
 
 # with pnpm
-
 pnpm add -D vite-plugin-css-auto-import
 
 # with yarn
-
 yard add -D vite-plugin-css-auto-import
-
 ```
 
 Next, add it to the `plugins` section of your Vite config.
@@ -88,7 +81,7 @@ Check the setup examples in `playground` folder.
 
 ## How it works
 
-By default, the plugin will look for any style file in the same directory that matches the component file name.
+By default, the plugin will look for any style files in the same directory that match the component file name.
 For example, for `Component.jsx` it would match `Component.css`, `Component.scss`, etc.
 
 The plugin will import the styles automatically. If the imported file is a CSS module, the plugin automatically replaces class names with the scoped class name.
@@ -103,17 +96,11 @@ You can change the default style matching behavior. Check the [API section](#api
 Auto import comes in handy when dealing with CSS modules.
 When the matched styles file is a CSS module, the plugin will also transform your component to map the source class name to a generated local-scoped class name.
 
-<!-- When matched style file is a module (its name ends with `.module` or when resolved using [`resolveStyleForComponent`](#resolvestyleforcomponent) method). -->
-
 To use CSS modules, you can:
 
 - add `.module` at the end of your style file name ([following Vite's convention](https://vitejs.dev/guide/features.html#css-modules))
 - mark **all auto-imported styles** as modules by setting [`resolveAllStylesAsModules`](#resolveallstylesasmodules) option to `true`.
 - implement your own resolution logic using [`resolveStyleForComponent`](#resolvestyleforcomponent) method.
-
-<!-- You can continue writing -->
-
-<!-- For example: -->
 
 For example, with this CSS file:
 
@@ -191,41 +178,6 @@ You can configure CSS modules transform by setting [`css.modules`](https://vitej
 
 `vite-plugin-css-auto-import` is built with TypeScript. So it supports both JSX and TSX component syntax out of the box.
 
-<!-- and this
-
-```
-
-<div className={`${styles.foo} ${styles.bar}`} />
-```
-
-or even worse
-
-```
-import styles from "./styles.module.css";
-...
-<div className={[styles.foo, styles.bar].join(" ")} />
-```
-
-or how about:
-
-````
-import styles from "./styles.module.css";
-...
-<div className={`${styles.foo} ${styles.bar}`} />
-``` -->
-
-<!-- - `<div className={[styles.foo, styles.bar].join()} />`
-- `` <div className={`${styles.foo} ${styles.bar}`} /> ``
-- `<div className={classes(styles.foo, styles.bar)} /> // + install` -->
-
-<!-- Just put your CSS file next to a component. Write React/Preact/Solid components as if you've imported styles and the plugin will do the rest.
-This plugin also supports CSS modules, so there's no more `<div className={styles.container} />` but just `<div className="container">`
-
-## Features
-
-- Works with JSX and TSX (tested with React and Solid)
-- CSS modules support -->
-
 ## API
 
 Default options:
@@ -298,7 +250,7 @@ Result should be of the following type:
 
 ```typescript
 interface ResolvedStyleResult {
-  // controls the way styles are imported.
+  // controls the way styles are imported
   isModule: boolean;
   // full path to the style module
   filePath: string;
@@ -312,33 +264,3 @@ interface ResolvedStyleResult {
 - [ ] Add an option to include/exclude specific directories to resolve CSS imports.
 - [ ] Improve LESS support.
 - [ ] VS Code extension to provide the auto-completion list.
-
-<!-- ### Usage examples
-
-1. Default setup.
-
-```typescript
-cssAutoImport();
-// is equivalent to:
-cssAutoImport({
-  componentExtensions: [".tsx", ".jsx"],
-  styleExtensions: [".css", ".scss", ".less"],
-  matchComponentName: true,
-});
-```
-
-This would match:
-
-```
-/ComponentFolder
-  /Component.jsx
-  /Component.module.scss <-- this file will be imported as module automatically
-```
-
-```
-/ComponentFolder
-  /Component.jsx
-  /Component.scss <-- this file will be imported as global
-``` -->
-
-<!-- ## How it works -->
