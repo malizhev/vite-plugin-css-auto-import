@@ -2,6 +2,10 @@ import type { CSSModulesOptions } from "vite";
 import postcss from "postcss";
 import postcssModules from "postcss-modules";
 
+import sassPostCssPlugin from "@csstools/postcss-sass";
+import sassSyntax from "postcss-scss";
+import lessSyntax from "postcss-less";
+
 export async function transformStyles(
   from: string,
   code: string,
@@ -42,15 +46,15 @@ export async function transformStyles(
 function getSyntaxExtensions(fileUrl: string) {
   if (fileUrl.endsWith(".scss") || fileUrl.endsWith(".sass")) {
     return {
-      plugin: require("@csstools/postcss-sass"),
-      syntax: require("postcss-scss"),
+      plugin: sassPostCssPlugin,
+      syntax: sassSyntax,
     };
   }
 
   if (fileUrl.endsWith(".less")) {
     return {
       plugin: undefined,
-      syntax: require("postcss-less"),
+      syntax: lessSyntax,
     };
   }
 
