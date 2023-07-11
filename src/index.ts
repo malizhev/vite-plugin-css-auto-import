@@ -14,6 +14,7 @@ const defaultOptions: Partial<PluginOptions> = {
 
 const virtualModuleIdPrefix = "virtual:css-auto-import";
 const resolvedVirtualModuleIdPrefix = `\0${virtualModuleIdPrefix}`;
+const virtualModuleUrlSeparator = "originalModuleId=";
 
 export default function cssAutoImport(
   userOptions: Partial<PluginOptions> = {}
@@ -52,9 +53,13 @@ export default function cssAutoImport(
     return options.componentExtensions.includes(path.ext);
   }
 
+  /**
+   * Generates a URL that looks like the following:
+   * virtual:css-auto-import/e2fdd67cf4194/originalModuleId=<path> 
+   */
   function generateVirtualStyleModuleId(moduleId: string) {
     const uniqueId = Math.random().toString(16).slice(2);
-    return `${virtualModuleIdPrefix}/${uniqueId}${moduleId}`;
+    return `${virtualModuleIdPrefix}/${uniqueId}/${virtualModuleUrlSeparator}${moduleId}`;
   }
 
   function addReferenceRecord(
@@ -138,10 +143,11 @@ export default function cssAutoImport(
         return undefined;
       }
 
-      const pathSegments = id.split("/");
-      pathSegments.shift();
-      pathSegments.shift();
-      const referencedModuleId = "/" + pathSegments.join("/");
+      const separatorIdx = id.indexOf(virtualModuleUrlSeparator);
+      /**
+       * Extract the part that goes after the `originalModuleId=`
+       */
+      const referencedModuleId = id.substring(separatorIdx + virtualModuleUrlSeparator.length);
 
       if (!styleModuleIdToCssMap.has(referencedModuleId)) {
         throw new Error(`Failed to resolve CSS module ${referencedModuleId}`);
