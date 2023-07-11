@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-css-auto-import",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "",
   "type": "module",
   "main": "dist/cjs/index.cjs",
