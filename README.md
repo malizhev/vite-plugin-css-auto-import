@@ -62,7 +62,7 @@ npm install -D vite-plugin-css-auto-import
 pnpm add -D vite-plugin-css-auto-import
 
 # with yarn
-yard add -D vite-plugin-css-auto-import
+yarn add -D vite-plugin-css-auto-import
 ```
 
 Next, add it to the `plugins` section of your Vite config.
